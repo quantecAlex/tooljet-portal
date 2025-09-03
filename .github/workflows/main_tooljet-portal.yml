@@ -31,12 +31,24 @@ jobs:
       - name: Build (Next.js standalone)
         run: npm run build
 
-      # Package only the runtime bundle produced by "output: 'standalone'"
-      - name: Prepare standalone bundle
+      # Package the runtime bundle: standalone server + full .next + public
+      - name: Prepare runtime bundle (standalone + full .next + public)
         run: |
+          # target dir
           mkdir -p .next/standalone/.next
-          cp -r .next/static .next/standalone/.next/static
+
+          # copy entire .next (build ID, manifests, server, static)
+          cp -r .next/* .next/standalone/.next/
+
+          # trim cache to reduce size (optional)
+          rm -rf .next/standalone/.next/cache || true
+
+          # copy public assets if present
           if [ -d public ]; then cp -r public .next/standalone/public; fi
+
+          # sanity check
+          ls -la .next/standalone
+          ls -la .next/standalone/.next | head -n 50
 
       - name: Upload artifact for deploy
         uses: actions/upload-artifact@v4
