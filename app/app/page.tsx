@@ -1,20 +1,19 @@
 // app/app/page.tsx
 import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import { redirect } from "next/navigation";
 import { cookieName, verifySession } from "../../lib/session";
 import { makeToolJetToken } from "../../lib/tooljetToken";
 
-export default function AppPage() {
+export default async function AppPage() {
   // 1) Check session cookie
-  const jar = cookies();
+  const jar = await cookies(); // <-- await since cookies() returns a Promise
   const sid = jar.get(cookieName)?.value;
   if (!sid) redirect("/login");
 
   let email: string;
   try {
     const payload = verifySession(sid);
-    email = payload.sub; // we used the email as the userId for the demo
+    email = payload.sub; // we used the email as userId in the demo
   } catch {
     redirect("/login");
   }
@@ -23,9 +22,10 @@ export default function AppPage() {
   const user = { id: email, email, role: "end_user" };
   const token = makeToolJetToken(user);
 
-  // 3) Build the iframe URL
-  const appUrl = process.env.TOOLJET_APP_URL!;
-  const src = `${appUrl}?token=${encodeURIComponent(token)}&uid=${encodeURIComponent(user.id)}`;
+  // 3) Build the iframe URL (handles both ? and & cases)
+  const base = process.env.TOOLJET_APP_URL!;
+  const joiner = base.includes("?") ? "&" : "?";
+  const src = `${base}${joiner}token=${encodeURIComponent(token)}&uid=${encodeURIComponent(user.id)}`;
 
   return (
     <main style={{ height: "100vh", margin: 0 }}>
