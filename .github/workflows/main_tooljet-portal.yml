@@ -1,12 +1,8 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
 name: Build and deploy Node.js app to Azure Web App - tooljet-portal
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -31,39 +27,21 @@ jobs:
       - name: Build (Next.js standalone)
         run: npm run build
 
-      # Stage runtime bundle into ./out:
-      # - copy the standalone server
-      # - copy full .next (exclude standalone + cache)
-      # - copy public assets
+      # Stage runtime bundle into ./out for deployment
       - name: Prepare runtime bundle (standalone + full .next + public)
         run: |
           set -e
-
-          # fresh target
           rm -rf out
           mkdir -p out/.next
-
-          # 1) standalone server code (contains server.js)
           cp -r .next/standalone/* out/
-
-          # 2) full .next EXCLUDING standalone and cache
-          rsync -a --delete \
-            --exclude 'standalone' \
-            --exclude 'cache' \
-            .next/ out/.next/
-
-          # 3) public assets (if any)
+          rsync -a --delete --exclude 'standalone' --exclude 'cache' .next/ out/.next/
           if [ -d public ]; then cp -r public out/public; fi
 
-          # quick sanity check
-          ls -la out
-          ls -la out/.next | head -n 50
-
-      - name: Upload artifact for deploy
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: out
+          name: out            # <— artifact is called "out"
+          path: out            # <— contains server.js at its root
 
   deploy:
     runs-on: ubuntu-latest
@@ -76,8 +54,8 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: node-app
-          path: .
+          name: out           # <— download the "out" artifact
+          path: out           # <— will appear as ./out
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -91,4 +69,4 @@ jobs:
         with:
           app-name: 'tooljet-portal'
           slot-name: 'Production'
-          package: .
+          package: ./out       # <— deploy the out/ folder directly
