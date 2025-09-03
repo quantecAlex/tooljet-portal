@@ -13,8 +13,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build Next.js (standalone)
-        working-directory: tooljet-portal
+      # Optional: sanity check the workspace layout on the runner
+      - name: Show workspace
+        run: |
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          pwd
+          ls -la
+
+      - name: Build Next.js (standalone) at repo root
         run: |
           npm ci
           npm run build
@@ -28,6 +34,5 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: <YOUR_APP_NAME>
-          package: tooljet-portal/site
-          # slot-name: <optional-slot>
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          package: site
