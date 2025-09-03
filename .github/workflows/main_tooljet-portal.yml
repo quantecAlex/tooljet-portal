@@ -31,30 +31,39 @@ jobs:
       - name: Build (Next.js standalone)
         run: npm run build
 
-      # Package the runtime bundle: standalone server + full .next + public
+      # Stage runtime bundle into ./out:
+      # - copy the standalone server
+      # - copy full .next (exclude standalone + cache)
+      # - copy public assets
       - name: Prepare runtime bundle (standalone + full .next + public)
         run: |
-          # target dir
-          mkdir -p .next/standalone/.next
+          set -e
 
-          # copy entire .next (build ID, manifests, server, static)
-          cp -r .next/* .next/standalone/.next/
+          # fresh target
+          rm -rf out
+          mkdir -p out/.next
 
-          # trim cache to reduce size (optional)
-          rm -rf .next/standalone/.next/cache || true
+          # 1) standalone server code (contains server.js)
+          cp -r .next/standalone/* out/
 
-          # copy public assets if present
-          if [ -d public ]; then cp -r public .next/standalone/public; fi
+          # 2) full .next EXCLUDING standalone and cache
+          rsync -a --delete \
+            --exclude 'standalone' \
+            --exclude 'cache' \
+            .next/ out/.next/
 
-          # sanity check
-          ls -la .next/standalone
-          ls -la .next/standalone/.next | head -n 50
+          # 3) public assets (if any)
+          if [ -d public ]; then cp -r public out/public; fi
+
+          # quick sanity check
+          ls -la out
+          ls -la out/.next | head -n 50
 
       - name: Upload artifact for deploy
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .next/standalone
+          path: out
 
   deploy:
     runs-on: ubuntu-latest
