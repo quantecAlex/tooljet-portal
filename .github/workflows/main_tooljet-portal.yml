@@ -1,72 +1,33 @@
-name: Build and deploy Node.js app to Azure Web App - tooljet-portal
-
+name: Deploy Tooljet Portal
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [ main ]  # or your deploy branch
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - name: Install dependencies (clean)
-        run: npm ci
-
-      - name: Build (Next.js standalone)
-        run: npm run build
-
-      - name: Prepare runtime bundle
+      - name: Build Next.js (standalone)
+        working-directory: tooljet-portal
         run: |
-          set -e
-          rm -rf out
-          mkdir -p out/.next
-          cp -r .next/standalone out/.next/standalone
-          cp -r .next/static out/.next/static
-          if [ -d public ]; then cp -r public out/public; fi
-          cp package.json out/package.json
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: out
-          path: out
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: out
-          path: out
-
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_98020FFF38984CA18D547CF7BE89EDF7 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_641A0B9E757B4858ACEFB8DC16192511 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_51F55399101542B98B1D77B4A8CBD801 }}
+          npm ci
+          npm run build
+          mkdir -p site/.next
+          cp -r .next/standalone site/.next/standalone
+          cp -r .next/static     site/.next/static
+          if [ -d public ]; then cp -r public site/public; fi
+          cp package.json site/package.json
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'tooljet-portal'
-          slot-name: 'Production'
-          package: ./out
+          app-name: <YOUR_APP_NAME>
+          package: tooljet-portal/site
+          # slot-name: <optional-slot>
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
